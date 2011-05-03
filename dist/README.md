@@ -5,16 +5,12 @@ This directory contains the tools that are used to build distributions of Requir
 When doing a release, do the following:
 
 * Update files to the new version number:
-    * require.js
+    * require.js, both places
+    * all plugins, both places
     * README.md
     * docs/download.md: check for nested paths too, add new release section
     * pre.html
-* Update integrated jQuery versioned-builds:
-    * Save a built jQuery to build/jquery
-    * Make sure to apply changes from previous converted jQuery to new one via examining diffs.
-    * Be sure to add /** * @license to the jQuery license block so that it survives google closure compiler.
-    * Update build/jquery/require-jquery.build.js and requireplugins-jquery.build.js to reference the new version of jQuery.
-    * Update dist/dist-build.sh to reference the right jQuery file.
+    * post.html
 * Commit/push changes
 
 * Tag the tree:
@@ -32,7 +28,7 @@ Run the distribution tasks.
 
 To generate the web site:
 
-* java -jar ../build/lib/rhino/js.jar dist-site.js
+* ../bin/x dist-site.js
 
 To generate a build
 

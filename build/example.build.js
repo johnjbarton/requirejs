@@ -29,6 +29,11 @@
         "baz": "../another/path/baz"
     },
 
+    //Configure CommonJS packages. See http://requirejs.org/docs/api.html#packages
+    //for more information.
+    packagePaths: [],
+    packages: [],
+
     //The directory path to save the output. If not specified, then
     //the path will default to be a directory called "build" as a sibling
     //to the build file. All relative paths are relative to the build file.
@@ -42,13 +47,34 @@
 
     //How to optimize all the JS files in the build output directory.
     //Right now only the following values
-    //are supported (default is to not do any optimization):
+    //are supported:
+    //- "uglify": (default) uses UglifyJS to minify the code.
     //- "closure": uses Google's Closure Compiler in simple optimization
-    //mode to minify the code.
+    //mode to minify the code. Only available if running the optimizer using
+    //Java.
     //- "closure.keepLines": Same as closure option, but keeps line returns
     //in the minified files.
     //- "none": no minification will be done.
-    optimize: "closure",
+    optimize: "uglify",
+
+    //If using UglifyJS for script optimization, these config options can be
+    //used to pass configuration values to UglifyJS.
+    //See https://github.com/mishoo/UglifyJS for the possible values.
+    uglify: {
+        gen_codeOptions: {},
+        strict_semicolons: {},
+        do_toplevel: {},
+        ast_squeezeOptions: {}
+    },
+
+    //If using Closure Compiler for script optimization, these config options
+    //can be used to configure Closure Compiler. See the documentation for
+    //Closure compiler for more information.
+    closure: {
+        CompilerOptions: {},
+        CompilationLevel: 'SIMPLE_OPTIMIZATIONS',
+        loggingLevel: 'WARNING'
+    }
 
     //Allow CSS optimizations. Allowed values:
     //- "standard": @import inlining, comment removal and line returns.
@@ -83,8 +109,7 @@
     //is evaluated to see if the code between the Start and End pragma
     //lines should be included or excluded.
     pragmas: {
-        //Indicates require will be included with jquery.
-        jquery: true
+        fooExclude: true
     },
 
     //Skip processing for pragmas.
@@ -110,10 +135,6 @@
         //built file unless the locale: section is set above.
         {
             name: "foo/bar/bop",
-
-            //Should the contents of require.js be included in the optimized module.
-            //Defaults to false.
-            includeRequire: true,
 
             //For build profiles that contain more than one modules entry,
             //allow overrides for the properties that set for the whole build,

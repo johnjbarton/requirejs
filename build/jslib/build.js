@@ -1,80 +1,117 @@
 /**
- * @license Copyright (c) 2010, The Dojo Foundation All Rights Reserved.
+ * @license Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/requirejs for details
  */
 
-/*jslint regexp: false, plusplus: false, nomen: false */
-/*global java: false, lang: false, fileUtil: false, optimize: false,
-  load: false, quit: false, print: false, logger: false, require: false,
-  pragma: false, parse: false */
+/*jslint regexp: false, plusplus: false, nomen: false, strict: false  */
+/*global define: false, require: false */
 
-"use strict";
 
-var build, buildBaseConfig;
-(function () {
+define([ 'lang', 'logger', 'env!env/file', 'parse', 'optimize', 'pragma',
+         'env!env/load', 'requirePatch'],
+function (lang,   logger,   file,          parse,    optimize,   pragma,
+          load,           requirePatch) {
+    var build, buildBaseConfig;
+
     buildBaseConfig = {
             requireBuildPath: "../",
             appDir: "",
             pragmas: {},
             paths: {},
-            optimize: "closure",
+            optimize: "uglify",
             optimizeCss: "standard.keepLines",
-            inlineText: true
+            inlineText: true,
+            isBuild: true
         };
 
+    function endsWithSlash(dirName) {
+        if (dirName.charAt(dirName.length - 1) !== "/") {
+            dirName += "/";
+        }
+        return dirName;
+    }
+
+
+    /**
+     * Main API entry point into the build. The args argument can either be
+     * an array of arguments (like the onese passed on a command-line),
+     * or it can be a JavaScript object that has the format of a build profile
+     * file.
+     *
+     * If it is an object, then in addition to the normal properties allowed in
+     * a build profile file, the object should contain one other property:
+     *
+     * requireBuildPath: a string that is the path to find require.js and the
+     * require/ directory. This should be a pristine require.js with only
+     * require.js contents (no plugins or jQuery).
+     *
+     * The object could also contain a "buildFile" property, which is a string
+     * that is the file path to a build profile that contains the rest
+     * of the build profile directives.
+     *
+     * This function does not return a status, it should throw an error if
+     * there is a problem completing the build.
+     */
     build = function (args) {
-        var requireBuildPath, buildFile, baseUrlFile, buildPaths, deps, fileName, fileNames,
-            prop, props, paths, path, i, fileContents, buildFileContents = "",
-            doClosure, requireContents, pluginBuildFileContents,
-            baseConfig, override, builtRequirePath, cmdConfig, config,
-            modules, module, moduleName, builtModule, srcPath, buildContext;
+        var requireBuildPath, buildFile, cmdConfig;
 
-        if (!args || args.length < 2) {
-            print("java -jar path/to/js.jar build.js directory/containing/build.js/ build.js\n" +
-                  "where build.js is the name of the build file (see example.build.js for hints on how to make a build file.");
-            quit();
-        }
+        if (!args || lang.isArray(args)) {
+            if (!args || args.length < 2) {
+                logger.error("build.js directory/containing/build.js/ buildProfile.js\n" +
+                      "where buildProfile.js is the name of the build file (see example.build.js for hints on how to make a build file).");
+                return;
+            }
 
-        //First argument to this script should be the directory on where to find this script.
-        //This path should end in a slash.
-        requireBuildPath = args[0];
-        if (requireBuildPath.charAt(requireBuildPath.length - 1) !== "/") {
-            requireBuildPath += "/";
-        }
+            //Second argument should be the directory on where to find this script.
+            //This path should end in a slash.
+            requireBuildPath = args[0];
+            requireBuildPath = endsWithSlash(requireBuildPath);
 
-        ["lang", "logger", "fileUtil", "parse", "optimize", "pragma", "build"].forEach(function (path) {
-            load(requireBuildPath + "jslib/" + path + ".js");
-        });
+            //Next args can include a build file path as well as other build args.
+            //build file path comes first. If it does not contain an = then it is
+            //a build file path. Otherwise, just all build args.
+            if (args[1].indexOf("=") === -1) {
+                buildFile = args[1];
+                args.splice(0, 2);
+            } else {
+                args.splice(0, 1);
+            }
 
-        //Next args can include a build file path as well as other build args.
-        //build file path comes first. If it does not contain an = then it is
-        //a build file path. Otherwise, just all build args.
-        if (args[1].indexOf("=") === -1) {
-            buildFile = args[1];
-            args.splice(0, 2);
+            //Remaining args are options to the build
+            cmdConfig = build.convertArrayToObject(args);
+            cmdConfig.buildFile = buildFile;
+            cmdConfig.requireBuildPath = requireBuildPath;
         } else {
-            args.splice(0, 1);
+            cmdConfig = args;
         }
 
-        //Remaining args are options to the build
-        cmdConfig = build.convertArrayToObject(args);
-        cmdConfig.buildFile = buildFile;
-        cmdConfig.requireBuildPath = requireBuildPath;
+        build._run(cmdConfig);
+    };
+
+    build._run = function (cmdConfig) {
+        var buildFileContents = "",
+            buildPaths, fileName, fileNames,
+            prop, paths, i,
+            baseConfig, config,
+            modules, builtModule, srcPath, buildContext,
+            destPath;
+
+        //Can now run the patches to require.js to allow it to be used for
+        //build generation. Do it here instead of at the top of the module
+        //because we want normal require behavior to load the build tool
+        //then want to switch to build mode.
+        requirePatch();
 
         config = build.createConfig(cmdConfig);
         paths = config.paths;
-
-        //Load require.js with the build patches.
-        load(config.requireUrl);
-        load(requireBuildPath + "jslib/requirePatch.js");
 
         if (!config.out && !config.cssIn) {
             //This is not just a one-off file build but a full build profile, with
             //lots of files to process.
 
             //First copy all the baseUrl content
-            fileUtil.copyDir((config.appDir || config.baseUrl), config.dir, /\w/, true);
+            file.copyDir((config.appDir || config.baseUrl), config.dir, /\w/, true);
 
             //Adjust baseUrl if config.appDir is in play, and set up build output paths.
             buildPaths = {};
@@ -95,8 +132,18 @@ var build, buildBaseConfig;
                             srcPath = config.baseUrl + srcPath;
                         }
 
-                        //Copy files to build area. Copy all files (the /\w/ regexp)
-                        fileUtil.copyDir(srcPath, config.dirBaseUrl + buildPaths[prop], /\w/, true);
+                        destPath = config.dirBaseUrl + buildPaths[prop];
+
+                        //If the srcPath is a directory, copy the whole directory.
+                        if (file.exists(srcPath) && file.isDirectory(srcPath)) {
+                            //Copy files to build area. Copy all files (the /\w/ regexp)
+                            file.copyDir(srcPath, destPath, /\w/, true);
+                        } else {
+                            //Try a .js extension
+                            srcPath += '.js';
+                            destPath += '.js';
+                            file.copyFile(srcPath, destPath);
+                        }
                     }
                 }
             }
@@ -108,7 +155,9 @@ var build, buildBaseConfig;
         //require multiple times and the above copyDir call only copies newer files.
         require({
             baseUrl: config.baseUrl,
-            paths: paths
+            paths: paths,
+            packagePaths: config.packagePaths,
+            packages: config.packages
         });
         buildContext = require.s.contexts._;
         modules = config.modules;
@@ -118,11 +167,13 @@ var build, buildBaseConfig;
                 if (module.name) {
                     module._sourcePath = buildContext.nameToUrl(module.name);
                     //If the module does not exist, and this is not a "new" module layer,
-                    //as indicated by a true "create" property on the module, then throw an error.
-                    if (!(new java.io.File(module._sourcePath)).exists() && !module.create) {
+                    //as indicated by a true "create" property on the module, and
+                    //it is not a plugin-loaded resource, then throw an error.
+                    if (!file.exists(module._sourcePath) && !module.create &&
+                        module.name.indexOf('!') === -1) {
                         throw new Error("ERROR: module path does not exist: " +
                                         module._sourcePath + " for module named: " + module.name +
-                                        ". Path is relative to: " + (new java.io.File('.')).getAbsolutePath());
+                                        ". Path is relative to: " + file.absPath('.'));
                     }
                 }
             });
@@ -141,6 +192,7 @@ var build, buildBaseConfig;
                 baseUrl: config.dirBaseUrl,
                 paths: buildPaths
             };
+
             lang.mixin(baseConfig, config);
             require(baseConfig);
 
@@ -149,7 +201,7 @@ var build, buildBaseConfig;
                     if (module.name) {
                         module._buildPath = buildContext.nameToUrl(module.name, null);
                         if (!module.create) {
-                            fileUtil.copyFile(module._sourcePath, module._buildPath);
+                            file.copyFile(module._sourcePath, module._buildPath);
                         }
                     }
                 });
@@ -205,7 +257,7 @@ var build, buildBaseConfig;
 
                 //Flatten them and collect the build output for each module.
                 builtModule = build.flattenModule(module, module.layer, config);
-                fileUtil.saveUtf8File(module._buildPath, builtModule.text);
+                file.saveUtf8File(module._buildPath, builtModule.text);
                 buildFileContents += builtModule.buildText;
             });
         }
@@ -219,7 +271,7 @@ var build, buildBaseConfig;
             //Normal optimizations across modules.
 
             //JS optimizations.
-            fileNames = fileUtil.getFilteredFileList(config.dir, /\.js$/, true);
+            fileNames = file.getFilteredFileList(config.dir, /\.js$/, true);
             for (i = 0; (fileName = fileNames[i]); i++) {
                 optimize.jsFile(fileName, fileName, config);
             }
@@ -230,7 +282,7 @@ var build, buildBaseConfig;
             }
 
             //All module layers are done, write out the build.txt file.
-            fileUtil.saveUtf8File(config.dir + "build.txt", buildFileContents);
+            file.saveUtf8File(config.dir + "build.txt", buildFileContents);
         }
 
         //If just have one CSS file to optimize, do that here.
@@ -240,9 +292,8 @@ var build, buildBaseConfig;
 
         //Print out what was built into which layers.
         if (buildFileContents) {
-            print(buildFileContents);
+            logger.info(buildFileContents);
         }
-
     };
 
     /**
@@ -281,7 +332,17 @@ var build, buildBaseConfig;
                 value = value.split(",");
             }
 
-            result[prop] = value;
+            if (prop.indexOf("paths.") === 0) {
+                //Special handling of paths properties. paths.foo=bar is transformed
+                //to data.paths = {foo: 'bar'}
+                if (!result.paths) {
+                    result.paths = {};
+                }
+                prop = prop.substring("paths.".length, prop.length);
+                result.paths[prop] = value;
+            } else {
+                result[prop] = value;
+            }
         }
         return result; //Object
     };
@@ -293,6 +354,7 @@ var build, buildBaseConfig;
             path = absFilePath +
                    (absFilePath.charAt(absFilePath.length - 1) === '/' ? '' : '/') +
                    path;
+            path = file.normalize(path);
         }
         return path;
     };
@@ -310,7 +372,7 @@ var build, buildBaseConfig;
      */
     build.createConfig = function (cfg) {
         /*jslint evil: true */
-        var config = {}, baseUrl, buildFileContents, buildFileConfig,
+        var config = {}, buildFileContents, buildFileConfig,
             paths, props, i, prop, buildFile, absFilePath, originalBaseUrl;
 
         lang.mixin(config, buildBaseConfig);
@@ -325,24 +387,27 @@ var build, buildBaseConfig;
                 cfg.requireBuildPath = config.requireBuildPath;
             }
         }
-        config.requireUrl = fileUtil.absPath(java.io.File(cfg.requireBuildPath + "../require.js"));
 
         if (config.buildFile) {
             //A build file exists, load it to get more config.
-            buildFile = new java.io.File(config.buildFile).getAbsoluteFile();
+            buildFile = file.absPath(config.buildFile);
 
             //Find the build file, and make sure it exists, if this is a build
             //that has a build profile, and not just command line args with an in=path
-            if (!buildFile.exists()) {
-                throw new Error("ERROR: build file does not exist: " + buildFile.getAbsolutePath());
+            if (!file.exists(buildFile)) {
+                throw new Error("ERROR: build file does not exist: " + buildFile);
             }
 
-            absFilePath = config.baseUrl = fileUtil.absPath(buildFile.getParentFile()).replace(lang.backSlashRegExp, '/');
+            absFilePath = config.baseUrl = file.absPath(file.parent(buildFile));
             config.dir = config.baseUrl + "/build/";
 
             //Load build file options.
-            buildFileContents = fileUtil.readFile(buildFile);
-            buildFileConfig = eval("(" + buildFileContents + ")");
+            buildFileContents = file.readFile(buildFile);
+            try {
+                buildFileConfig = eval("(" + buildFileContents + ")");
+            } catch(e) {
+                throw new Error("Build file " + buildFile + " is malformed: " + e);
+            }
             lang.mixin(config, buildFileConfig, true);
 
             //Re-apply the override config values, things like command line
@@ -363,7 +428,7 @@ var build, buildBaseConfig;
             }
 
             //In this scenario, the absFile path is current directory
-            absFilePath = (String((new java.io.File('.')).getAbsolutePath())).replace(lang.backSlashRegExp, '/');
+            absFilePath = file.absPath('.');
         }
 
         if (config.out && !config.cssIn) {
@@ -379,10 +444,6 @@ var build, buildBaseConfig;
                     excludeShallow: config.excludeShallow
                 }
             ];
-
-            if (config.includeRequire) {
-                config.modules[0].includeRequire = true;
-            }
 
             //Does not have a build file, so set up some defaults.
             //Optimizing CSS should not be allowed, unless explicitly
@@ -400,9 +461,6 @@ var build, buildBaseConfig;
         for (i = 0; (prop = props[i]); i++) {
             if (config[prop]) {
                 config[prop] = config[prop].replace(lang.backSlashRegExp, "/");
-                if (config[prop].charAt(config[prop].length - 1) !== "/") {
-                    config[prop] += "/";
-                }
 
                 //Add abspath if necessary.
                 if (prop === "baseUrl") {
@@ -418,11 +476,17 @@ var build, buildBaseConfig;
                         //The dir output baseUrl is same as regular baseUrl, both
                         //relative to the absFilePath.
                         config.baseUrl = build.makeAbsPath(config[prop], absFilePath);
-                        config.dirBaseUrl = config.dir;
+                        config.dirBaseUrl = config.dir || config.baseUrl;
                     }
+
+                    //Make sure dirBaseUrl ends in a slash, since it is
+                    //concatenated with other strings.
+                    config.dirBaseUrl = endsWithSlash(config.dirBaseUrl);
                 } else {
                     config[prop] = build.makeAbsPath(config[prop], absFilePath);
                 }
+
+                config[prop] = endsWithSlash(config[prop]);
             }
         }
 
@@ -432,13 +496,6 @@ var build, buildBaseConfig;
             if (config[prop]) {
                 config[prop] = build.makeAbsPath(config[prop], absFilePath);
             }
-        }
-
-        //Make sure paths has a setting for require, so support plugins
-        //can be loaded for the build.
-        paths = config.paths;
-        if (!paths.require) {
-            paths.require = config.requireUrl.substring(0, config.requireUrl.lastIndexOf("/")) + "/require";
         }
 
         return config;
@@ -490,16 +547,23 @@ var build, buildBaseConfig;
      * be in the flattened module.
      */
     build.traceDependencies = function (module, config) {
-        var include, override, url, layer, prop,
-            context = require.s.contexts._,
-            baseConfig = context.config;
+        var include, override, layer, context, baseConfig, oldContext;
 
         //Reset some state set up in requirePatch.js, and clean up require's
         //current context.
-        require._buildReset();
+        oldContext = require._buildReset();
 
-        //Put back basic config
-        require(baseConfig);
+        //Grab the reset layer and context after the reset, but keep the
+        //old config to reuse in the new context.
+        baseConfig = oldContext.config;
+        layer = require._layer;
+        context = layer.context;
+
+        //Put back basic config, use a fresh object for it.
+        //WARNING: probably not robust for paths and packages/packagePaths,
+        //since those property's objects can be modified. But for basic
+        //config clone it works out.
+        require(lang.delegate(baseConfig));
 
         logger.trace("\nTracing dependencies for: " + (module.name || module.out));
         include = module.name && !module.create ? [module.name] : [];
@@ -517,10 +581,7 @@ var build, buildBaseConfig;
         //Figure out module layer dependencies by calling require to do the work.
         require(include);
 
-        //Pull out the layer dependencies. Do not use the old context
-        //but grab the latest value from inside require() since it was reset
-        //since our last context reference.
-        layer = require._layer;
+        //Pull out the layer dependencies.
         layer.specified = context.specified;
 
         //Reset config
@@ -546,16 +607,11 @@ var build, buildBaseConfig;
      * included in the flattened module text.
      */
     build.flattenModule = function (module, layer, config) {
-        var buildFileContents = "", requireContents = "",
-            context = require.s.contexts._,
-            //This regexp is not bullet-proof, and it has one optional part to
-            //avoid issues with some Dojo transition modules that use a
-            //define(\n//begin v1.x content
-            //for a comment.
-            anonDefRegExp = /(require\s*\.\s*def|define)\s*\(\s*(\/\/[^\n\r]*[\r\n])?(\[|f|\{)/,
-            prop, path, reqIndex, fileContents, currContents,
-            i, moduleName, specified, deps, includeRequire,
-            parts, builder;
+        var buildFileContents = "",
+            context = layer.context,
+            path, reqIndex, fileContents, currContents,
+            i, moduleName,
+            parts, builder, writeApi;
 
         //Use override settings, particularly for pragmas
         if (module.override) {
@@ -568,19 +624,8 @@ var build, buildBaseConfig;
                              (config.dir ? module._buildPath.replace(config.dir, "") : module._buildPath) +
                              "\n----------------\n";
 
-        //If the file wants require.js added to the module, add it now
-        requireContents = "";
-        includeRequire = false;
-        if ("includeRequire" in module) {
-            includeRequire = module.includeRequire;
-        }
-        if (includeRequire) {
-            requireContents = pragma.process(config.requireUrl, fileUtil.readFile(config.requireUrl), config);
-            buildFileContents += "require.js\n";
-        }
-
         //If there was an existing file with require in it, hoist to the top.
-        if (!includeRequire && layer.existingRequireUrl) {
+        if (layer.existingRequireUrl) {
             reqIndex = layer.buildFilePaths.indexOf(layer.existingRequireUrl);
             if (reqIndex !== -1) {
                 layer.buildFilePaths.splice(reqIndex, 1);
@@ -596,40 +641,22 @@ var build, buildBaseConfig;
             //Figure out if the module is a result of a build plugin, and if so,
             //then delegate to that plugin.
             parts = context.makeModuleMap(moduleName);
-            builder = parts.prefix && require.pluginBuilders[parts.prefix];
-
+            builder = parts.prefix && context.pluginBuilders[parts.prefix];
             if (builder) {
-                if (builder.onWrite) {
-                    builder.onWrite(parts.prefix, parts.name, function (input) {
+                if (builder.write) {
+                    writeApi = function (input) {
                         fileContents += input;
-                    });
+                    };
+                    writeApi.asModule = function (moduleName, input) {
+                        fileContents += build.toTransport(moduleName, path, input, layer);
+                    };
+                    builder.write(parts.prefix, parts.name, writeApi);
                 }
             } else {
                 //Add the contents but remove any pragmas.
-                currContents = pragma.process(path, fileUtil.readFile(path), config);
+                currContents = pragma.process(path, file.readFile(path), config);
 
-                //If anonymous module, insert the module name.
-                currContents = currContents.replace(anonDefRegExp, function (match, callName, possibleComment, suffix) {
-                    layer.modulesWithNames[moduleName] = true;
-
-                    //Look for CommonJS require calls inside the function if this is
-                    //an anonymous define/require.def call that just has a function registered.
-                    deps = null;
-                    if (suffix.indexOf('f') !== -1) {
-                        deps = parse.getAnonDeps(path, currContents);
-                        if (deps.length) {
-                            deps = deps.map(function (dep) {
-                                return "'" + dep + "'";
-                            });
-                        } else {
-                            deps = null;
-                        }
-                    }
-
-                    return "define('" + moduleName + "'," +
-                           (deps ? ('[' + deps.toString() + '],') : '') +
-                           suffix;
-                });
+                currContents = build.toTransport(moduleName, path, currContents, layer);
 
                 fileContents += currContents;
             }
@@ -640,17 +667,59 @@ var build, buildBaseConfig;
             //after the module is processed.
             //If we have a name, but no defined module, then add in the placeholder.
             if (moduleName && !layer.modulesWithNames[moduleName] && !config.skipModuleInsertion) {
-                fileContents += 'define("' + moduleName + '", function(){});\n';
+                //If including jquery, register the module correctly, otherwise
+                //register an empty function. For jquery, make sure jQuery is
+                //a real object, and perhaps not some other file mapping, like
+                //to zepto.
+                if (moduleName === 'jquery') {
+                    fileContents += '\n(function () {\n' +
+                                   'var jq = typeof jQuery !== "undefined" && jQuery;\n' +
+                                   'define("jquery", [], function () { return jq; });\n' +
+                                   '}());\n';
+                } else {
+                    fileContents += 'define("' + moduleName + '", function(){});\n';
+                }
             }
         }
-
-        //Add the require file contents to the head of the file.
-        fileContents = (requireContents ? requireContents + "\n" : "") +
-                       fileContents;
 
         return {
             text: fileContents,
             buildText: buildFileContents
         };
     };
-}());
+
+    //This regexp is not bullet-proof, and it has one optional part to
+    //avoid issues with some Dojo transition modules that use a
+    //define(\n//begin v1.x content
+    //for a comment.
+    build.anonDefRegExp = /(require\s*\.\s*def|define)\s*\(\s*(\/\/[^\n\r]*[\r\n])?(\[|f|\{)/;
+
+    build.toTransport = function (moduleName, path, contents, layer) {
+        //If anonymous module, insert the module name.
+        return contents.replace(build.anonDefRegExp, function (match, callName, possibleComment, suffix) {
+            layer.modulesWithNames[moduleName] = true;
+
+            //Look for CommonJS require calls inside the function if this is
+            //an anonymous define/require.def call that just has a function registered.
+            var deps = null;
+            if (suffix.indexOf('f') !== -1) {
+                deps = parse.getAnonDeps(path, contents);
+
+                if (deps.length) {
+                    deps = deps.map(function (dep) {
+                        return "'" + dep + "'";
+                    });
+                } else {
+                    deps = [];
+                }
+            }
+
+            return "define('" + moduleName + "'," +
+                   (deps ? ('[' + deps.toString() + '],') : '') +
+                   suffix;
+        });
+
+    };
+
+    return build;
+});

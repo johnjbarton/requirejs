@@ -28,8 +28,12 @@ if (location.href.indexOf('http://127.0.0.1/requirejs/') === 0) {
 doh.registerUrl("circular", "../circular.html");
 doh.registerUrl("depoverlap", "../depoverlap.html");
 doh.registerUrl("urlfetch", "../urlfetch/urlfetch.html");
+doh.registerUrl("uniques", "../uniques/uniques.html");
 doh.registerUrl("multiversion", "../multiversion.html", 10000);
 doh.registerUrl("jquery", "../jquery/jquery.html");
+doh.registerUrl("jqueryPriority", "../jquery/jqueryPriority.html");
+doh.registerUrl("jqueryVersion", "../jquery/jqueryVersion.html");
+doh.registerUrl("jqueryVersion2", "../jquery/jqueryVersion2.html");
 
 //Next three tests fail in PS3
 doh.registerUrl("jqueryDynamic", "../jquery/jqueryDynamic.html");
@@ -42,12 +46,21 @@ doh.registerUrl("i18nlocale", "../i18n/i18n.html?locale=en-us-surfer");
 //Fail in PS3
 doh.registerUrl("i18nbundle", "../i18n/i18n.html?bundle=i18n!nls/en-us-surfer/colors");
 
+//Probably fail in PS3
+doh.registerUrl("i18ncommon", "../i18n/common.html");
+doh.registerUrl("i18ncommonlocale", "../i18n/common.html?locale=en-us-surfer");
+
+
 doh.registerUrl("paths", "../paths/paths.html");
 
 doh.registerUrl("layers", "../layers/layers.html", 10000);
 doh.registerUrl("allplugins-text", "../layers/allplugins-text.html");
 
 doh.registerUrl("afterload", "../afterload.html", 10000);
+
+doh.registerUrl("pluginsSync", "../plugins/sync.html");
+doh.registerUrl("doublePluginCall", "../plugins/double.html");
+doh.registerUrl("pluginsFromText", "../plugins/fromText/fromText.html");
 doh.registerUrl("text", "../text/text.html");
 doh.registerUrl("textOnly", "../text/textOnly.html");
 doh.registerUrl("jsonp", "../jsonp/jsonp.html");
@@ -60,6 +73,7 @@ doh.registerUrl("exports", "../exports/exports.html");
 
 
 doh.registerUrl("priority", "../priority/priority.html");
+doh.registerUrl("priorityOptimized", "../priority/priorityOptimized.html");
 doh.registerUrl("priorityWithDeps", "../priority/priorityWithDeps/priorityWithDeps.html");
 doh.registerUrl("prioritySingleCall", "../priority/prioritySingleCall.html");
 
