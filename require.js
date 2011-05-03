@@ -143,7 +143,6 @@ var require, define;
             urlMap = {},
             defined = {},
             loaded = {},
-            counted = [], // moduleName by scriptCount
             waiting = {},
             waitAry = [],
             waitIdCounter = 0,
@@ -804,7 +803,7 @@ var require, define;
             if (context.config.onDebug){
                 context.config.onDebug("checkLoaded waitCount:"+context.waitCount+" pausedCount: "+context.pausedCount+" scriptCount: "+context.scriptCount);
                 if (context.scriptCount)
-                    context.config.onDebug("checkLoaded counted:"+context.counted[context.scriptCount - 1]);
+                    context.config.onDebug("checkLoaded context.counted:"+context.counted[context.scriptCount - 1]);
             }
             var waitInterval = config.waitSeconds * 1000,
                 //It is possible to disable the wait interval by using waitSeconds of 0.
@@ -1576,6 +1575,7 @@ var require, define;
 
         if (!urlFetched[url]) {
             context.scriptCount += 1;
+            if (!context.counted) context.counted = [];
             context.counted.push(moduleName);
             if (context.config.onDebug){
                 context.config.onDebug("context.scriptCount: "+context.scriptCount+" attach: "+url+" moduleName: "+moduleName+" isBrowser: :"+isBrowser, {context: context});
