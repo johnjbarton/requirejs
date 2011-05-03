@@ -131,7 +131,7 @@ var require, define;
                 waitSeconds: 7,
                 baseUrl: s.baseUrl || "./",
                 paths: {},
-                pkgs: {}
+                pkgs: {},
                 debug: null,
             },
             defQueue = [],
@@ -143,6 +143,7 @@ var require, define;
             urlMap = {},
             defined = {},
             loaded = {},
+            counted = [], // moduleName by scriptCount
             waiting = {},
             waitAry = [],
             waitIdCounter = 0,
@@ -801,9 +802,9 @@ var require, define;
          */
         function checkLoaded() {
             if (context.config.onDebug){
-                context.config.onDebug("checkLoaded "+context.waitCount+"\n");
-                if (context.waitCount === 9)
-                    throw new Error("waitCount 9");
+                context.config.onDebug("checkLoaded waitCount:"+context.waitCount+" pausedCount: "+context.pausedCount+" scriptCount: "+context.scriptCount);
+                if (context.scriptCount)
+                    context.config.onDebug("checkLoaded counted:"+context.counted[context.scriptCount - 1]);
             }
             var waitInterval = config.waitSeconds * 1000,
                 //It is possible to disable the wait interval by using waitSeconds of 0.
@@ -844,7 +845,9 @@ var require, define;
                     }
                 }
             }
-
+            if (context.config.onDebug) {
+                context.config.onDebug("checkLoaded stillLoading: "+stillLoading+" noLoads: "+noLoads);
+            }
             //Check for exit conditions.
             if (!hasLoadedProp && !context.waitCount) {
                 //If the loaded object had no items, then the rest of
@@ -946,6 +949,10 @@ var require, define;
                 //Indicate a the module is in process of loading.
                 context.loaded[moduleName] = false;
                 context.scriptCount += 1;
+                context.counted.push(moduleName);
+                if (context.config.onDebug) {
+                    context.config.onDebug("context.counted push "+context.counted[context.scriptCount - 1]);
+                }
 
                 //Turn off interactive script matching for IE for any define
                 //calls in the text, then turn it back on at the end.
@@ -1034,6 +1041,8 @@ var require, define;
                 //require() calls that also do not end up loading scripts could
                 //push the number negative too.
                 context.scriptCount = 0;
+                if (context.config.onDebug)
+                    context.counted = [];
             }
 
             //Make sure any remaining defQueue items get properly processed.
@@ -1318,11 +1327,20 @@ var require, define;
                 //the checkLoaded setTimeout 50 ms cost is taken. To avoid
                 //that cost, decrement beforehand.
                 if (req.isAsync) {
+                    if (context.config.onDebug) {
+                        context.config.onDebug("context.counted pop "+context.counted[context.scriptCount - 1]);
+                    }
+
                     context.scriptCount -= 1;
+                    context.counted.pop();
                 }
                 resume();
                 if (!req.isAsync) {
+                    if (context.config.onDebug) {
+                        context.config.onDebug("context.counted pop "+context.counted[context.scriptCount - 1]);
+                    }
                     context.scriptCount -= 1;
+                    context.counted.pop();
                 }
             },
 
@@ -1417,7 +1435,7 @@ var require, define;
                                     allPaths.push(p);
                                 context.config.onDebug("require.js "+parentModule+" not found in paths ("+allPaths.join(',')+")");
                                 var allPackages = [];
-                                for (var p in packages)
+                                for (var p in pkgs)
                                     allPackages.push(p);
                                 context.config.onDebug("require.js "+parentModule+" not found in packages ("+allPackages.join(',')+")");
                             }
@@ -1558,6 +1576,7 @@ var require, define;
 
         if (!urlFetched[url]) {
             context.scriptCount += 1;
+            context.counted.push(moduleName);
             if (context.config.onDebug){
                 context.config.onDebug("context.scriptCount: "+context.scriptCount+" attach: "+url+" moduleName: "+moduleName+" isBrowser: :"+isBrowser, {context: context});
             }
