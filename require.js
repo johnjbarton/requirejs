@@ -1328,7 +1328,7 @@ var require, define;
                 //that cost, decrement beforehand.
                 if (req.isAsync) {
                     if (context.config.onDebug) {
-                        context.config.onDebug("context.counted pop "+context.counted[context.scriptCount - 1]);
+                        context.config.onDebug("context.counted async pop "+context.counted[context.scriptCount - 1]);
                     }
 
                     context.scriptCount -= 1;
@@ -1337,7 +1337,7 @@ var require, define;
                 resume();
                 if (!req.isAsync) {
                     if (context.config.onDebug) {
-                        context.config.onDebug("context.counted pop "+context.counted[context.scriptCount - 1]);
+                        context.config.onDebug("context.counted not async pop "+context.counted[context.scriptCount - 1]);
                     }
                     context.scriptCount -= 1;
                     context.counted.pop();
