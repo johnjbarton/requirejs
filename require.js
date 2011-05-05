@@ -506,7 +506,16 @@ var require, define;
                 if (context.config.onDebug) {
                     context.config.onDebug("require.js: defining "+fullName+" with "+args.length+" dependents", {defineFunction: manager.callback, dependents: args});
                 }
-                                ret = req.execCb(fullName, manager.callback, args, defined[fullName]);                if (fullName) {
+                try {
+                    ret = req.execCb(fullName, manager.callback, args, defined[fullName]);
+                } catch(exc) {
+                    if (context.config.onDebug) {
+                        var msg = exc.toString() +" "+(exc.fileName || exc.sourceName) + "@" + exc.lineNumber;
+                        context.config.onError("require.js: define "+fullName+" ERROR "+msg);
+                    }
+                    ret = defined[fullName] = exc;
+                }
+                if (fullName) {
                     //If exports is in play, favor that since it helps circular
                     //dependencies. If setting exports via "module" is in play,
                     //favor that but only if the value is different from default
@@ -514,6 +523,7 @@ var require, define;
                     if (manager.usingExports && manager.cjsModule &&
                         manager.cjsModule.exports !== defined[fullName]) {
                         ret = defined[fullName] = manager.cjsModule.exports;
+
                     } else if (fullName in defined) {
                         //This case is when usingExports is in play and
                         //module.exports/setExports was not used. It could also
@@ -523,11 +533,23 @@ var require, define;
                         //if it does for some reason, only the original definition
                         //will be used for integrity.
                         ret = defined[fullName];
+                        if (context.config.onDebug) {
+                            context.config.onDebug("require.js: defined "+fullName+" using previously defined value");
+                        }
                     } else {
                         //Use the return value from the function.
                         defined[fullName] = ret;
+
+                        if (context.config.onDebug) {
+                            context.config.onDebug("require.js: defined "+fullName+" using function return");
+                        }
+                    }
+                } else {
+                    if (context.config.onDebug) {
+                        context.config.onDebug("require.js: defined found no fullName");
                     }
                 }
+
             } else if (fullName) {
                 //May just be an object definition for the module. Only
                 //worry about defining if have a module name.
@@ -802,8 +824,12 @@ var require, define;
         function checkLoaded() {
             if (context.config.onDebug){
                 context.config.onDebug("checkLoaded waitCount:"+context.waitCount+" pausedCount: "+context.pausedCount+" scriptCount: "+context.scriptCount);
-                if (context.scriptCount)
-                    context.config.onDebug("checkLoaded context.counted:"+context.counted[context.scriptCount - 1]);
+                if (context.scriptCount) {
+                    for (var p in context.counted)
+                    {
+                        context.config.onDebug("checkLoaded context.counted["+p+"]"+context.counted[p]);
+                    }
+                }
             }
             var waitInterval = config.waitSeconds * 1000,
                 //It is possible to disable the wait interval by using waitSeconds of 0.
@@ -1040,8 +1066,6 @@ var require, define;
                 //require() calls that also do not end up loading scripts could
                 //push the number negative too.
                 context.scriptCount = 0;
-                if (context.config.onDebug)
-                    context.counted = [];
             }
 
             //Make sure any remaining defQueue items get properly processed.
@@ -1327,19 +1351,28 @@ var require, define;
                 //that cost, decrement beforehand.
                 if (req.isAsync) {
                     if (context.config.onDebug) {
-                        context.config.onDebug("context.counted async pop "+context.counted[context.scriptCount - 1]);
+                        var removeCountedIndex = context.counted.indexOf(moduleName);
+                        if (removeCountedIndex === -1) {
+                            context.config.onDebug("context.counted async "+(removeCountedIndex)+" pop  ERROR "+moduleName);
+                            for (var p in context.counted)
+                                context.config.onDebug("context.counted["+p+"] "+context.counted[p]+" "+(context.counted[p] === moduleName));
+                        }
+                        else {
+                            context.config.onDebug("context.counted async "+(removeCountedIndex)+" pop "+context.counted[removeCountedIndex]+" "+moduleName);
+                            context.counted.splice(removeCountedIndex, 1);
+                        }
                     }
 
                     context.scriptCount -= 1;
-                    context.counted.pop();
                 }
                 resume();
                 if (!req.isAsync) {
                     if (context.config.onDebug) {
-                        context.config.onDebug("context.counted not async pop "+context.counted[context.scriptCount - 1]);
+                        var removeCountedIndex = context.counted.indexOf(moduleName);
+                        context.config.onDebug("context.counted not async "+(removeCountedIndex)+" pop "+context.counted[removeCountedIndex]+" "+moduleName);
+                        context.counted.splice(removeCountedIndex, 1);
                     }
                     context.scriptCount -= 1;
-                    context.counted.pop();
                 }
             },
 
@@ -1575,10 +1608,14 @@ var require, define;
 
         if (!urlFetched[url]) {
             context.scriptCount += 1;
-            if (!context.counted) context.counted = [];
-            context.counted.push(moduleName);
             if (context.config.onDebug){
-                context.config.onDebug("context.scriptCount: "+context.scriptCount+" attach: "+url+" moduleName: "+moduleName+" isBrowser: :"+isBrowser, {context: context});
+                if (!context.counted) {
+                    context.config.onDebug("context.counted ------------ reset");
+                    context.counted = [];
+                }
+                context.counted.push(moduleName);
+                var index = context.counted.indexOf(moduleName);
+                context.config.onDebug("context.counted push "+moduleName+" context.scriptCount:"+context.scriptCount+" index "+index);
             }
             req.attach(url, contextName, moduleName);
             urlFetched[url] = true;
