@@ -3,41 +3,49 @@ Release Notes
 - exports and return use is stricter: if exports is in play, return value is ignored.
 - includeRequire is removed, use paths: {requireLib: "../../require"} to get require in it.
   See the optimization.html for the requireLib example.
+- New optimizer/node/rhino adapter: r.js
+- Removed support for lib in packages.
 
 Next release
 --------------
 
+- relative modules IDs?
+  - excludeShallow not excluding files loaded with the text plugin: email thread. Exclusions.
+
+- Remove nameToUrl use in plugins/public code.
+  - Make sure it is not in the docs
+
+- Add a global require.toUrl()
+
+- Put in warning in r.js about paths that have http:, or just a colon.
+
+
 - text plugins after a build load xdomain?
-- move urlFetched outside of load function and do the check before load.
+- Why can't plugins have dependencies? It is because the dependency is not fully evaluated.
+  Maybe rethink it, there have been some cases where creating a plugin that uses the
+  text plugin would be useful. However, would that mean the optimized result would include
+  the string twice in the output?
 - replacement for modify that intercepts callbacks, holds off until another module loads them?
+  - A way to show dependency graph too?
 - Set up official IE9 release VM
 - localeList for i18n.js support, for better Dojo support.
 - Minify the require.js files with UglifyJS.
-- Update docs: priority config options can only be plain JS dependencies, not plugin loaded ones.
-- Fix commonjs/convert.sh script, does not work.
-- IE checkLoaded recursion? https://github.com/jrburke/requirejs/issues/82
-- Document in README the directory structure.
 - Support jQuery holdReady
-- Document config.jQuery support
+- Pointer to motivations behind current thing, reason for dependencies.
 
-- "libs/static.lib.02", //kaaahhhhnnnn!!!
-- optimizer as a separate project?
-- Build the optimizer as its own project, at least enough to take out the
-  work from jquery-require-sample
 - https://github.com/jrburke/requirejs/pull/71: process by 2/21
+
+
+Next release
+------------------
+
+- If any other info: IE checkLoaded recursion? https://github.com/jrburke/requirejs/issues/82
 
 - build tool to rename require and define calls to other names?
 - Confirm: From Richard Backhouse: As an FYI I have been doing my own investigation of using UglifyJS for compression
 and one thing I found when trying to compress dojo 1.5 code was that I had ensure that "make_seqs"
 flag was set to false when calling ast_squeeze. If I left this flag set to true the code would not load.
-- Put in error message with URL refs to faq page?
-  - one candidate: mismatched require.def calls: happens when loading some modules/scripts with inline script tags that include a named module,
-    but later the anonymous version is loaded: so the named one is in a built file.
-- Point to Miller's gist for ant integration: https://gist.github.com/825117
-- Build with requireplugins-jquery.js uses bad definition for require/text, probably other plugins. Use a jqueryStub.js
-  for builds that need it with plain define, and allow the build system to load
-  the plugins. A problem, since previously built layers with plugins in them
-  can cause a problem.
+
 
 Bugs to work on
 ------------------

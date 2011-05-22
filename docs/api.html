@@ -407,7 +407,7 @@ define({
         //the html variable will be the text
         //of the some/module.html file
         //the css variable will be the text
-        //of the som/module.css file.
+        //of the some/module.css file.
     }
 );
 </code></pre>
@@ -470,11 +470,16 @@ define({
 });
 </code></pre>
 
-<p>Scripts loaded by the <strong>order</strong> plugin will be fetched asynchronously, but evaluated in the order they are passed to require, so it should still perform better with using script tags in the head of an HTML document.</p>
+<p>Scripts loaded by the <strong>order</strong> plugin will be fetched asynchronously, but evaluated in the order they are passed to require, so it should still perform better than using script tags in the head of an HTML document.</p>
 
-<p>The <strong>order</strong> plugin is best used with traditional scripts, it is not needed for scripts that use define() to define modules. It is possible to mix and match "order!" dependencies with regular dependencies, but only the "order!" ones will be evaluated in relative order to each other. </p>
+<p>The <strong>order</strong> plugin is best used with traditional scripts. It is not needed for scripts that use define() to define modules. It is possible to mix and match "order!" dependencies with regular dependencies, but only the "order!" ones will be evaluated in relative order to each other. </p>
 
-<p><strong>Note</strong>: the order! plugin only works with JavaScript files that are cacheable by the browser. If the JS file has headers that do not allow the browser to cache the file, then the order of scripts will not be maintained.</p>
+<p><strong>Notes:</strong></p>
+<ul>
+    <li>The order! plugin only works with JavaScript files that are cacheable by the browser. If the JS file has headers that do not allow the browser to cache the file, then the order of scripts will not be maintained.</li>
+    <li>Do not use the order! plugin to load other plugin-loaded resources. For instance. 'order!cs!my/coffescript/module' is not recommended. You will get errors in some versions of IE and WebKit. This is due to the workarounds the order plugin needs to do for those browsers to ensure ordered execution.</li>
+</ul>
+
 </div>
 
 <div class="section">
@@ -543,38 +548,42 @@ define({
 
 <p>Supported configuration options:</p>
 
-<p><strong>baseUrl</strong>: the root path to use for all module lookups. So in the above example, "my/module"'s script tag will have a src="/another/path/my/module.js". baseUrl is <strong>not</strong> used when loading plain .js files, those strings are used as-is, so a.js and b.js will be loaded from the same directory as the HTML page that contains the above snippet.</p>
+<p id="config-baseUrl"><strong>baseUrl</strong>: the root path to use for all module lookups. So in the above example, "my/module"'s script tag will have a src="/another/path/my/module.js". baseUrl is <strong>not</strong> used when loading plain .js files, those strings are used as-is, so a.js and b.js will be loaded from the same directory as the HTML page that contains the above snippet.</p>
 
 <p>If no baseUrl is explicitly set in the configuration, the default value will be the location of the HTML page that loads require.js. If a <strong>data-main</strong> attribute is used, that path will become the baseUrl.</p>
 
 <p>The baseUrl can be a URL on a different domain as the page that will load require.js. RequireJS script loading works across domains. The only restriction is on text content loaded by text! plugins: those paths should be on the same domain as the page, at least during development. The optimization tool will inline text! plugin resources so after using the optimization tool, you can use resources that reference text! plugin resources from another domain.</p>
 
-<p><strong>paths</strong>: path mappings for module names not found directly under baseUrl. The path settings are assumed to be relative to baseUrl, unless the paths setting starts with a "/" or has a URL protocol in it ("like http:"). In those cases, the path is determined relative to baseUrl. Using the above sample config, "some/module"'s script tag will be src="/another/path/some/v1.0/module.js". The path that is used for a module name should <strong>not</strong> include the .js extension, since the path mapping could be for a directory. The path mapping code will automatically add the .js extension when mapping the module name to a path.</p>
+<p id="config-paths"><strong>paths</strong>: path mappings for module names not found directly under baseUrl. The path settings are assumed to be relative to baseUrl, unless the paths setting starts with a "/" or has a URL protocol in it ("like http:"). In those cases, the path is determined relative to baseUrl. Using the above sample config, "some/module"'s script tag will be src="/another/path/some/v1.0/module.js". The path that is used for a module name should <strong>not</strong> include the .js extension, since the path mapping could be for a directory. The path mapping code will automatically add the .js extension when mapping the module name to a path.</p>
 
-<p><strong>packagePaths</strong>: configures module name prefixes to map to CommonJS packages. See the <a href="#packages">packages topic</a> for more information. Related to <strong>packages</strong> config option.</p>
+<p id="config-packagePaths"><strong>packagePaths</strong>: configures module name prefixes to map to CommonJS packages. See the <a href="#packages">packages topic</a> for more information. Related to <strong>packages</strong> config option.</p>
 
-<p><strong>packages</strong>: configures loading modules from CommonJS packages. See the <a href="#packages">packages topic</a> for more information. Related to <strong>packagePaths</strong> config option.</p>
+<p id="config-packages"><strong>packages</strong>: configures loading modules from CommonJS packages. See the <a href="#packages">packages topic</a> for more information. Related to <strong>packagePaths</strong> config option.</p>
 
-<p><strong>waitSeconds</strong>: The number of seconds to wait before giving up on loading a script. The default is 7 seconds.</p>
+<p id="config-waitSeconds"><strong>waitSeconds</strong>: The number of seconds to wait before giving up on loading a script. The default is 7 seconds.</p>
 
-<p><strong>locale</strong>: The locale to use for loading i18n bundles. By default navigator.language or navigator.userLanguage will be used. The proper syntax for specifying a locale is using lowercase and separating values by dashes, for instance: "fr-fr-paris" or "en-us".</p>
+<p id="config-locale"><strong>locale</strong>: The locale to use for loading i18n bundles. By default navigator.language or navigator.userLanguage will be used. The proper syntax for specifying a locale is using lowercase and separating values by dashes, for instance: "fr-fr-paris" or "en-us".</p>
 
-<p><strong>context</strong>: A name to give to a loading context. This allows require.js to load multiple versions of modules in a page, as long as each top-level require call specifies a unique context string. See <strong>Advanced Features</strong> below.</p>
+<p id="config-context"><strong>context</strong>: A name to give to a loading context. This allows require.js to load multiple versions of modules in a page, as long as each top-level require call specifies a unique context string. See <strong>Advanced Features</strong> below.</p>
 
-<p><strong>deps</strong>: An array of dependencies to load. Useful when require is defined as a config object before require.js is loaded, and you want to specify dependencies to load as soon as require() is defined.</p>
+<p id="config-deps"><strong>deps</strong>: An array of dependencies to load. Useful when require is defined as a config object before require.js is loaded, and you want to specify dependencies to load as soon as require() is defined.</p>
 
-<p><strong>callback</strong>: A function to pass to require that should be require after <strong>deps</strong> have been loaded. Useful when require is defined as a config object before require.js is loaded, and you want to specify a function to require after the configuration's <strong>deps</strong> array has been loaded.</p>
+<p id="config-callback"><strong>callback</strong>: A function to pass to require that should be require after <strong>deps</strong> have been loaded. Useful when require is defined as a config object before require.js is loaded, and you want to specify a function to require after the configuration's <strong>deps</strong> array has been loaded.</p>
 
-<p><strong>ready</strong>: A function to pass to require.ready(). Useful when require is defined as a config object before require.js is loaded, and you want to specify a require.ready callback to set as soon as require() is defined.</p>
+<p id="config-ready"><strong>ready</strong>: A function to pass to require.ready(). Useful when require is defined as a config object before require.js is loaded, and you want to specify a require.ready callback to set as soon as require() is defined.</p>
 
-<p><strong>priority</strong>: An array of module/file names to load immediately, before tracing down any other dependencies. This allows you to set up a small set of files that are downloaded in parallel that contain most of the modules and their dependencies already built in. More information is in the <a href="faq-optimization#priority">Optimization FAQ, Priority Downloads</a>.</p>
+<p id="config-priority"><strong>priority</strong>: An array of module/file names to load immediately, before tracing down any other dependencies. This allows you to set up a small set of files that are downloaded in parallel that contain most of the modules and their dependencies already built in. More information is in the <a href="faq-optimization#priority">Optimization FAQ, Priority Downloads</a>.<b>Note:</b> resources loaded by loader plugins (like 'text!template.html') <b>cannot</b> be specified in the priority array: the priority mechanism only works with regular JavaScript resources.</p>
 
-<p><strong>urlArgs</strong>: Extra query string arguments appended to URLs that RequireJS uses to fetch resources. Most useful to cache bust when the browser or server is not configured correctly. Example cache bust setting for urlArgs:</p>
+<p id="config-urlArgs"><strong>urlArgs</strong>: Extra query string arguments appended to URLs that RequireJS uses to fetch resources. Most useful to cache bust when the browser or server is not configured correctly. Example cache bust setting for urlArgs:</p>
 
 <pre><code>urlArgs: "bust=" +  (new Date()).getTime()
 </code></pre>
 
 <p>During development it can be useful to use this, however <strong>be sure</strong> to remove it before deploying your code.</p>
+
+<p id="config-jQuery"><strong>jQuery</strong>: (RequireJS 0.25.0+) specify an exact version match for the version of jQuery that should be allowed to register as the 'jquery' dependency. This is useful in environments where multiple jQuery files could be loaded but you want
+to be sure to get the right version of jQuery for your loading context. Normally you do not need to set this if you are only loading one version of jQuery in a page. However, if you use third party libraries that may also load jQuery, it is best to set this option.</p>
+
 </div>
 
 <div class="section">
@@ -620,8 +629,7 @@ define({
 <ul>
 <li><strong>name</strong>: The name of the package (used for the module name/prefix mapping)</li>
 <li><strong>location</strong>: The location on disk. Locations are relative to the baseUrl configuration value, unless they contain a protocol or start with a front slash (/).</li>
-<li><strong>lib</strong>: The name of the directory inside the package folder that contains modules. The default value is "lib", so no need to specify it unless it is different than the default.</li>
-<li><strong>main</strong>: The name of the module inside the package that should be used when someone does a require for "packageName". The default value is "lib/main", so only specify it if it differs from the default. The value is relative to the package folder.</li>
+<li><strong>main</strong>: The name of the module inside the package that should be used when someone does a require for "packageName". The default value is "main", so only specify it if it differs from the default. The value is relative to the package folder.</li>
 </ul></li>
 </ul>
 
@@ -629,6 +637,7 @@ define({
 
 <ul>
 <li>While the packages can have the CommonJS directory layout, the modules themselves should be in a module format that RequireJS can understand. Exception to the rule: if you are using the r.js Node adapter, the modules can be in the traditional CommonJS module format. You can use the <a href="commonjs.html#autoconversion">CommonJS converter tool</a> if you need to convert traditional CommonJS modules into the async module format that RequireJS uses.</li>
+<li>The <strong>lib</strong> directory option that may be used in packages is not supported. It causes some confusing path issues.</li>
 <li>Only one version of a package can be used in a project context at a time. You can use RequireJS <a href="#multiversion">multiversion support</a> to load two different module contexts, but if you want to use Package A and B in one context and they depend on different versions of Package C, then that will be a problem. This may change in the future.</li>
 </ul>
 
@@ -662,33 +671,21 @@ define({
 <ul>
 <li>alpha/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
-</ul></li>
 </ul></li>
 <li>omega/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
-</ul></li>
 </ul></li>
 </ul></li>
 <li>cart/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
-</ul></li>
 </ul></li>
 <li>store/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
 <li>util.js</li>
-</ul></li>
 </ul></li>
 <li>main.js</li>
 <li>package.json</li>
@@ -729,9 +726,9 @@ function (alpha,   omega,   cart,   store,   util) {
 });
 </code></pre>
 
-<p>A require of "alpha" means that it will be loaded from <strong>scripts/.packages/alpha/lib/main.js</strong>, since "lib" and "main" are the default lib directory and main module settings supported by RequireJS. A require of "store/util" will be loaded from <strong>scripts/store/lib/util.js</strong>.</p>
+<p>A require of "alpha" means that it will be loaded from <strong>scripts/.packages/alpha/main.js</strong>, since "main" is the default main module setting supported by RequireJS. A require of "store/util" will be loaded from <strong>scripts/store/util.js</strong>.</p>
 
-<p>If the "alpha" and "store" packages did not follow the "lib" and "main.js" conventions, and looked more like this:</p>
+<p>If the "alpha" and "store" packages did not follow the "main.js" convention, and looked more like this:</p>
 
 <ul>
 <li>project-directory/
@@ -744,25 +741,16 @@ function (alpha,   omega,   cart,   store,   util) {
 <ul>
 <li>alpha/
 <ul>
-<li>scripts/
-<ul>
 <li>index.js</li>
-</ul></li>
 </ul></li>
 <li>omega/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
-</ul></li>
 </ul></li>
 </ul></li>
 <li>cart/
 <ul>
-<li>lib/
-<ul>
 <li>main.js</li>
-</ul></li>
 </ul></li>
 <li>store/
 <ul>
@@ -783,7 +771,6 @@ function (alpha,   omega,   cart,   store,   util) {
         ".packages": [
             {
                 name: "alpha",
-                lib: "scripts",
                 main: "index"
             },
             "omega"
@@ -793,7 +780,6 @@ function (alpha,   omega,   cart,   store,   util) {
         "cart",
         {
             name: "store",
-            lib: ".",
             main: "store"
         }
     ]
@@ -807,7 +793,6 @@ function (alpha,   omega,   cart,   store,   util) {
         {
             name: "alpha",
             location: ".packages/alpha",
-            lib: "scripts",
             main: "index"
         },
         {
@@ -817,14 +802,13 @@ function (alpha,   omega,   cart,   store,   util) {
         "cart",
         {
             name: "store",
-            lib: ".",
             main: "store"
         }
     ]
 });
 </code></pre>
 
-<p>To avoid verbosity, it is strongly suggested to always use packages that use the "lib" and "main" conventions in their structure, and use packagePaths for third party packages.</p>
+<p>To avoid verbosity, it is strongly suggested to always use packages that use "main" convention in their structure, and use packagePaths for third party packages.</p>
 
 <p>To make fetching and configuring packages easier, there are designs for a command line package tool in the works.</p>
 
@@ -892,7 +876,7 @@ require({
 
 <h3><a name="rhino">Rhino Support</a><span class="sectionMark">&sect; 5.5</span></h3>
 
-<p>RequireJS can be used in Rhino via the <a href="download.html#node">r.js adapter</a>. Run it like so:</p>
+<p>RequireJS can be used in Rhino via the <a href="download.html#rjs">r.js adapter</a>. Run it like so:</p>
 
 <pre><code>java -jar path/to/rhino/js.jar r.js main.js
 </code></pre>
