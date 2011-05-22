@@ -1594,7 +1594,7 @@ var require, define;
             loaded[moduleName] = false;
         }
 
-        if (!urlFetched[url]) {
+        if (!context.urlFetched[url]) {
             context.scriptCount += 1;
             if (!context.counted) context.counted = [];
             context.counted.push(moduleName);
@@ -1602,7 +1602,7 @@ var require, define;
                 context.config.onDebug("context.scriptCount: "+context.scriptCount+" attach: "+url+" moduleName: "+moduleName+" isBrowser: :"+isBrowser, {context: context});
             }
             req.attach(url, contextName, moduleName);
-            urlFetched[url] = true;
+            context.urlFetched[url] = true;
         }
 
         //If tracking a jQuery, then make sure its readyWait
